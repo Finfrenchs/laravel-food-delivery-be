@@ -53,5 +53,9 @@ class DatabaseSeeder extends Seeder
             'restaurant_name' => 'Mie Ayam Cak Gandi',
             'roles' => 'restaurant',
         ]);
+
+        $this->call([
+            ProductSeeder::class,
+        ]);
     }
 }

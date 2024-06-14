@@ -176,4 +176,15 @@ class AuthController extends Controller
         ], 200);
     }
 
+    //Get All Restaurant
+    public function getAllRestaurants()
+    {
+        $restaurants = User::where('roles', 'restaurant')->with('products')->get();
+
+        return response()->json([
+            'message' => 'All restaurants retrieved successfully',
+            'restaurants' => $restaurants,
+        ], 200);
+    }
+
 }
