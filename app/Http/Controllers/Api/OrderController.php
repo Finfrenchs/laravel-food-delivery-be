@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -24,13 +25,19 @@ class OrderController extends Controller
             'total_bill' => 'required|integer|min:0',
         ]);
 
-        $order = DB::transaction(function () use ($validated) {
+        $user = auth()->user();
+        $shipping_address = $user->address;
+        $shipping_latlong = $user->latlong;
+
+        $order = DB::transaction(function () use ($validated, $shipping_address, $shipping_latlong) {
             $order = new Order([
                 'user_id' => auth()->id(),
                 'restaurant_id' => $validated['restaurant_id'],
                 'total_price' => $validated['total_price'],
                 'shipping_cost' => $validated['shipping_cost'],
                 'total_bill' => $validated['total_bill'],
+                'shipping_address' => $shipping_address,
+                'shipping_latlong' => $shipping_latlong,
                 'status' => 'pending',
             ]);
             $order->save();
@@ -196,6 +203,12 @@ class OrderController extends Controller
             ], 400);
         }
 
+        if ($order->driver_id) {
+            return response()->json([
+                'message' => 'Driver already assigned to this order'
+            ], 400);
+        }
+
         // Cari pengemudi yang sedang tidak dalam status waiting pickup atau on delivery secara acak
         $driver = DB::table('users')
             ->where('roles', 'driver')
@@ -270,6 +283,12 @@ class OrderController extends Controller
             ], 404);
         }
 
+        if ($order->driver_id && $order->driver_id !== auth()->id()) {
+            return response()->json([
+                'message' => 'This order is already assigned to another driver'
+            ], 403);
+        }
+
         $order->driver_id = auth()->id();
         $order->status = 'on delivery';
         $order->save();
@@ -321,9 +340,14 @@ class OrderController extends Controller
     public function getDriverOrders()
     {
         $driverId = auth()->id();
+
+        Log::info('Fetching orders for driver', ['driverId' => $driverId]);
+
         $orders = Order::where('driver_id', $driverId)
             ->whereIn('status', ['waiting pickup', 'done', 'cancel'])
             ->get();
+
+        Log::info('Orders retrieved', ['orders' => $orders]);
 
         return response()->json([
             'message' => 'Driver orders retrieved successfully',

@@ -40,6 +40,17 @@
                 </ul>
             </li>
 
+            <li class="nav-item dropdown">
+                <a href="#"
+                    class="nav-link has-dropdown"><i class="fa-solid fa-cart-flatbed"></i><span>Orders</span></a>
+                <ul class="dropdown-menu">
+                    <li >
+                        <a class="nav-link"
+                            href="{{ route('orders.index') }}">Order List</a>
+                    </li>
+                </ul>
+            </li>
+
            {{-- <li class="nav-item dropdown">
                 <a href="#"
                     class="nav-link has-dropdown"><i class="fa-solid fa-box"></i><span>Category</span></a>
@@ -52,16 +63,7 @@
             </li>
 
 
-            <li class="nav-item dropdown">
-                <a href="#"
-                    class="nav-link has-dropdown"><i class="fa-solid fa-cart-flatbed"></i><span>Orders</span></a>
-                <ul class="dropdown-menu">
-                    <li >
-                        <a class="nav-link"
-                            href="{{ route('orders.index') }}">Order List</a>
-                    </li>
-                </ul>
-            </li> --}}
+             --}}
 
             {{-- <li class="nav-item dropdown">
                 <a href="#"

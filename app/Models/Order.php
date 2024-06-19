@@ -18,6 +18,8 @@ class Order extends Model
         'total_bill',
         'payment_method',
         'payment_e_wallet',
+        'shipping_address',
+        'shipping_latlong',
         'status'
     ];
 

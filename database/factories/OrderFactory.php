@@ -27,8 +27,10 @@ class OrderFactory extends Factory
                 return $attributes['total_price'] + $attributes['shipping_cost'];
             },
             'payment_method' => $this->faker->randomElement(['bank_transfer', 'e_wallet']),
-            'payment_e_wallet' => $this->faker->optional()->creditCardNumber, // Menggunakan optional() dari Faker
+            'payment_e_wallet' => $this->faker->optional()->creditCardNumber,
             'status' => 'pending',
+            'shipping_address' => $this->faker->address,
+            'shipping_latlong' => $this->faker->latitude . ',' . $this->faker->longitude,
         ];
     }
 }

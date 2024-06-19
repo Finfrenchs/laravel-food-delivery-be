@@ -39,4 +39,4 @@ Route::get('/driver/orders/waiting', [OrderController::class, 'getOrdersWaitingP
 Route::post('/driver/order/take/{orderId}', [OrderController::class, 'takeDelivery'])->middleware('auth:sanctum');
 Route::post('/driver/order/done/{orderId}', [OrderController::class, 'markOrderAsDone'])->middleware('auth:sanctum');
 Route::get('/driver/order/{orderId}', [OrderController::class, 'getOrderDetailById'])->middleware('auth:sanctum');
-Route::get('/driver/orders', [OrderController::class, 'getDriverOrders']);
+Route::get('/driver/orders', [OrderController::class, 'getDriverOrders'])->middleware('auth:sanctum');
