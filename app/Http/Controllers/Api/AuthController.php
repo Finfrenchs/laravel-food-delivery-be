@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    //Register
     public function register(Request $request)
     {
         // Validate the request...
@@ -66,6 +67,7 @@ class AuthController extends Controller
         ], 201);
     }
 
+    //Logout
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -106,6 +108,7 @@ class AuthController extends Controller
         ], 200);
     }
 
+    //GetUserByID
     public function getUserById($id)
     {
         $user = User::find($id);
@@ -123,6 +126,7 @@ class AuthController extends Controller
         ], 200);
     }
 
+    //Update User
     public function updateUser(Request $request, $id)
     {
         $user = User::find($id);
@@ -184,6 +188,22 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'All restaurants retrieved successfully',
             'restaurants' => $restaurants,
+        ], 200);
+    }
+
+    //Update FCM ID
+    public function updateFcmId(Request $request)
+    {
+        $validated = $request->validate([
+            'fcm_id' => 'required',
+        ]);
+
+        $user = $request->user();
+        $user->fcm_id = $validated['fcm_id'];
+        $user->save();
+
+        return response()->json([
+            'message' => 'FCM ID Updated',
         ], 200);
     }
 

@@ -16,6 +16,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanc
 Route::get('/user/{id}', [AuthController::class, 'getUserById'])->middleware('auth:sanctum');
 Route::post('/user/{id}', [AuthController::class, 'updateUser'])->middleware('auth:sanctum');
 Route::get('/restaurants', [AuthController::class, 'getAllRestaurants'])->middleware('auth:sanctum');
+Route::post('/update-fcm', [AuthController::class, 'updateFcmId'])->middleware('auth:sanctum');
 
 // Product
 Route::get('/restaurants/{userId}/products', [ProductController::class, 'getProductsByRestaurant'])->middleware('auth:sanctum');

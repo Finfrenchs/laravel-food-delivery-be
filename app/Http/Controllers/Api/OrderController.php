@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class OrderController extends Controller
 {
@@ -57,6 +60,8 @@ class OrderController extends Controller
             return $order;
         });
 
+        $this->sendNotificationToRestaurant($order->restaurant_id, 'New Order', 'You have received a new order.');
+
         return response()->json([
             'message' => 'Order created successfully',
             'order' => $order,
@@ -87,6 +92,8 @@ class OrderController extends Controller
             $order->payment_e_wallet = $validated['payment_e_wallet'];
         }
         $order->save();
+
+        $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
 
         return response()->json([
             'message' => 'Order purchased successfully',
@@ -180,6 +187,8 @@ class OrderController extends Controller
         $order->status = 'preparing';
         $order->save();
 
+        $this->sendNotificationToUser($order->user_id, 'Order Preparing', 'Your order is being prepared.');
+
         return response()->json([
             'message' => 'Order is being prepared',
             'order' => $order,
@@ -229,6 +238,9 @@ class OrderController extends Controller
         $order->status = 'waiting pickup';
         $order->driver_id = $driver->id;
         $order->save();
+
+        $this->sendNotificationToUser($order->user_id, 'Order Ready for Pickup', 'Your order is ready for pickup.');
+        $this->sendNotificationToDriver($order->driver_id, 'Order Assigned', 'You have been assigned a new order for pickup.');
 
         return response()->json([
             'message' => 'Order is ready for pickup and assigned to a driver',
@@ -293,6 +305,8 @@ class OrderController extends Controller
         $order->status = 'on delivery';
         $order->save();
 
+        $this->sendNotificationToUser($order->user_id, 'Order on Delivery', 'Your order is on the way.');
+
         return response()->json([
             'message' => 'Order picked up for delivery',
             'order' => $order,
@@ -312,6 +326,10 @@ class OrderController extends Controller
 
         $order->status = 'done';
         $order->save();
+
+        $this->sendNotificationToUser($order->user_id, 'Order Delivered', 'Your order has been delivered successfully.');
+        $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Completed', 'The order has been completed successfully.');
+
 
         return response()->json([
             'message' => 'Order marked as done successfully',
@@ -355,4 +373,70 @@ class OrderController extends Controller
         ], 200);
     }
 
+    //Send Notification Function
+    // Method for send notification to  user
+    public function sendNotificationToUser($userId, $title, $message)
+    {
+        $user = User::find($userId);
+        if ($user && $user->fcm_id) {
+            $token = $user->fcm_id;
+
+            // Kirim notifikasi ke perangkat Android
+            $messaging = app('firebase.messaging');
+            $notification = Notification::create($title, $message);
+
+            $message = CloudMessage::withTarget('token', $token)
+                ->withNotification($notification);
+
+            try {
+                $messaging->send($message);
+            } catch (\Exception $e) {
+                Log::error('Failed to send notification', ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    // Method for send notification to restaurant
+    public function sendNotificationToRestaurant($restaurantId, $title, $message)
+    {
+        $restaurant = User::find($restaurantId);
+        if ($restaurant && $restaurant->fcm_id) {
+            $token = $restaurant->fcm_id;
+
+            // Kirim notifikasi ke perangkat Android
+            $messaging = app('firebase.messaging');
+            $notification = Notification::create($title, $message);
+
+            $message = CloudMessage::withTarget('token', $token)
+                ->withNotification($notification);
+
+            try {
+                $messaging->send($message);
+            } catch (\Exception $e) {
+                Log::error('Failed to send notification', ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    // Method send notification to driver
+    public function sendNotificationToDriver($driverId, $title, $message)
+    {
+        $driver = User::find($driverId);
+        if ($driver && $driver->fcm_id) {
+            $token = $driver->fcm_id;
+
+            // Kirim notifikasi ke perangkat Android
+            $messaging = app('firebase.messaging');
+            $notification = Notification::create($title, $message);
+
+            $message = CloudMessage::withTarget('token', $token)
+                ->withNotification($notification);
+
+            try {
+                $messaging->send($message);
+            } catch (\Exception $e) {
+                Log::error('Failed to send notification', ['error' => $e->getMessage()]);
+            }
+        }
+    }
 }
