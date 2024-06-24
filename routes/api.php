@@ -12,15 +12,19 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/userRegister', [AuthController::class, 'userRegister']);
+Route::post('/restaurantRegister', [AuthController::class, 'restaurantRegister']);
+Route::post('/driverRegister', [AuthController::class, 'driverRegister']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::get('/user/{id}', [AuthController::class, 'getUserById'])->middleware('auth:sanctum');
-Route::post('/user/{id}', [AuthController::class, 'updateUser'])->middleware('auth:sanctum');
+Route::post('/userUpdate', [AuthController::class, 'updateUser'])->middleware('auth:sanctum');
 Route::get('/restaurants', [AuthController::class, 'getAllRestaurants'])->middleware('auth:sanctum');
 Route::post('/update-fcm', [AuthController::class, 'updateFcmId'])->middleware('auth:sanctum');
 
 // Product
 Route::get('/restaurants/{userId}/products', [ProductController::class, 'getProductsByRestaurant'])->middleware('auth:sanctum');
-Route::post('/restaurants/{userId}/products', [ProductController::class, 'addProduct'])->middleware('auth:sanctum');
+Route::get('/products', [ProductController::class, 'getProductsByUserId'])->middleware('auth:sanctum');
+Route::post('/products', [ProductController::class, 'addProduct'])->middleware('auth:sanctum');
 Route::post('/products/{productId}', [ProductController::class, 'updateProduct'])->middleware('auth:sanctum');
 Route::delete('/products/{productId}', [ProductController::class, 'deleteProduct'])->middleware('auth:sanctum');
 
@@ -34,7 +38,7 @@ Route::post('/order/cancel/{orderId}', [OrderController::class, 'cancelOrder'])-
 Route::get('/restaurant/{userId}/orders', [OrderController::class, 'getOrdersByRestaurant'])->middleware('auth:sanctum');
 Route::post('/restaurant/order/{orderId}/prepare', [OrderController::class, 'prepareOrder'])->middleware('auth:sanctum');
 Route::post('/restaurant/order/{orderId}/ready', [OrderController::class, 'markOrderAsReady'])->middleware('auth:sanctum');
-Route::get('/restaurant/report/{userId}', [OrderController::class, 'getRestaurantReport'])->middleware('auth:sanctum');
+Route::get('/restaurant/report', [OrderController::class, 'getRestaurantReport'])->middleware('auth:sanctum');
 
 Route::get('/driver/orders/waiting', [OrderController::class, 'getOrdersWaitingPickup'])->middleware('auth:sanctum');
 Route::post('/driver/order/take/{orderId}', [OrderController::class, 'takeDelivery'])->middleware('auth:sanctum');

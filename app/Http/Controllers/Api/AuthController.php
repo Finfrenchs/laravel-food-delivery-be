@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    //Register
+    //Register All Role
     public function register(Request $request)
     {
         // Validate the request...
@@ -49,6 +49,149 @@ class AuthController extends Controller
 
         // Merge validated data with default values
         $data = array_merge($validated, $defaultData);
+
+        // Password encryption
+        $data['password'] = Hash::make($validated['password']);
+
+        // Create user
+        $user = User::create($data);
+
+        // Generate token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Return response with all user attributes
+        return response()->json([
+            'message' => 'Register success',
+            'access_token' => $token,
+            'user' => $user,
+        ], 201);
+    }
+
+    // Register User
+    public function userRegister(Request $request)
+    {
+        // Validate the request...
+        $validated = $request->validate([
+            'name' => 'required|max:100',
+            'email' => 'required|unique:users|max:100',
+            'password' => 'required',
+            'phone' => 'required',
+            'address' => 'nullable|string',
+            'latlong'=> 'nullable|string',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        // Handle file upload using storeAs
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = time() . '_' . $file->getClientOriginalName(); // Generate a unique filename
+            $filePath = $file->storeAs('photos', $filename, 'public');
+            $validated['photo'] = $filePath;
+        } else {
+            $validated['photo'] = '';
+        }
+
+        // Merge validated data with default values
+        $data = array_merge($validated, [
+            'roles' => 'user',
+            'license_plate' => '',
+            'restaurant_name' => '',
+            'restaurant_address' => '',
+        ]);
+
+        // Password encryption
+        $data['password'] = Hash::make($validated['password']);
+
+        // Create user
+        $user = User::create($data);
+
+        // Generate token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Return response with all user attributes
+        return response()->json([
+            'message' => 'Register success',
+            'access_token' => $token,
+            'user' => $user,
+        ], 201);
+    }
+
+    // Register Restaurant
+    public function restaurantRegister(Request $request)
+    {
+        // Validate the request...
+        $validated = $request->validate([
+            'name' => 'required|max:100',
+            'email' => 'required|unique:users|max:100',
+            'password' => 'required',
+            'phone' => 'required',
+            'restaurant_name' => 'required|string',
+            'restaurant_address' => 'required|string',
+            'latlong' => 'required|string',
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        // Handle file upload using storeAs
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = time() . '_' . $file->getClientOriginalName(); // Generate a unique filename
+            $filePath = $file->storeAs('photos', $filename, 'public');
+            $validated['photo'] = $filePath;
+        }
+
+        // Merge validated data with default values
+        $data = array_merge($validated, [
+            'roles' => 'restaurant',
+            'license_plate' => '',
+            'address' => '',
+        ]);
+
+        // Password encryption
+        $data['password'] = Hash::make($validated['password']);
+
+        // Create user
+        $user = User::create($data);
+
+        // Generate token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Return response with all user attributes
+        return response()->json([
+            'message' => 'Register success',
+            'access_token' => $token,
+            'user' => $user,
+        ], 201);
+    }
+
+    // Register Driver
+    public function driverRegister(Request $request)
+    {
+        // Validate the request...
+        $validated = $request->validate([
+            'name' => 'required|max:100',
+            'email' => 'required|unique:users|max:100',
+            'password' => 'required',
+            'phone' => 'required',
+            'license_plate' => 'required|string',
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        // Handle file upload using storeAs
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = time() . '_' . $file->getClientOriginalName(); // Generate a unique filename
+            $filePath = $file->storeAs('photos', $filename, 'public');
+            $validated['photo'] = $filePath;
+        }
+
+        // Merge validated data with default values
+        $data = array_merge($validated, [
+            'roles' => 'driver',
+            'address' => '',
+            'restaurant_name' => '',
+            'restaurant_address' => '',
+            'latlong' => '',
+        ]);
 
         // Password encryption
         $data['password'] = Hash::make($validated['password']);
@@ -126,10 +269,11 @@ class AuthController extends Controller
         ], 200);
     }
 
-    //Update User
-    public function updateUser(Request $request, $id)
+    // Update User
+    public function updateUser(Request $request)
     {
-        $user = User::find($id);
+        // Get the authenticated user's ID
+        $user = $request->user();
 
         if (!$user) {
             return response()->json([
@@ -140,7 +284,7 @@ class AuthController extends Controller
         // Validate the request
         $validated = $request->validate([
             'name' => 'sometimes|required|max:100',
-            'email' => 'sometimes|required|email|unique:users,email,' . $id,
+            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
             'password' => 'sometimes|required',
             'phone' => 'sometimes|required',
             'address' => 'sometimes|nullable|string',
@@ -178,7 +322,8 @@ class AuthController extends Controller
             'message' => 'User updated successfully',
             'user' => $user,
         ], 200);
-    }
+}
+
 
     //Get All Restaurant
     public function getAllRestaurants()

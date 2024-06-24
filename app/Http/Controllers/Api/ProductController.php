@@ -29,12 +29,24 @@ class ProductController extends Controller
         ], 200);
     }
 
-    // Create a new product
-    public function addProduct(Request $request, $userId)
+    // Get all products by UserID
+    public function getProductsByUserId(Request $request)
     {
-        $user = User::find($userId);
+        $products = Product::with('user')->where('user_id', $request->user()->id)->get();
 
-        if (!$user || $user->roles !== 'restaurant') {
+
+        return response()->json([
+            'message' => 'Products retrieved successfully',
+            'products' => $products,
+        ], 200);
+    }
+
+    // Create a new product
+    public function addProduct(Request $request)
+    {
+        $user = auth()->user();
+
+        if ($user->roles !== 'restaurant') {
             return response()->json([
                 'message' => 'Restaurant not found'
             ], 404);
@@ -61,7 +73,7 @@ class ProductController extends Controller
         }
 
         $product = new Product($validated);
-        $product->user_id = $userId;
+        $product->user_id = $user->id;
         $product->save();
 
         return response()->json([
@@ -70,10 +82,12 @@ class ProductController extends Controller
         ], 201);
     }
 
+
     // Update an existing product
     public function updateProduct(Request $request, $productId)
     {
-        $product = Product::find($productId);
+        $user = auth()->user();
+        $product = Product::where('id', $productId)->where('user_id', $user->id)->first();
 
         if (!$product) {
             return response()->json([
@@ -117,7 +131,8 @@ class ProductController extends Controller
     // Delete a product
     public function deleteProduct($productId)
     {
-        $product = Product::find($productId);
+        $user = auth()->user();
+        $product = Product::where('id', $productId)->where('user_id', $user->id)->first();
 
         if (!$product) {
             return response()->json([

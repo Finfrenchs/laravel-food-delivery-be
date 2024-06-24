@@ -265,11 +265,19 @@ class OrderController extends Controller
             ->whereDate('created_at', now()->toDateString())
             ->sum('total_price');
 
+        // Total orders
+        $totalOrders = Order::where('restaurant_id', $restaurantId)->count();
+
+        // Total transactions (all time)
+        $totalTransactions = Order::where('restaurant_id', $restaurantId)->sum('total_price');
+
         return response()->json([
             'message' => 'Report retrieved successfully',
             'orders_today' => $ordersToday,
             'menus_available' => $menusAvailable,
             'total_transactions_today' => $totalTransactionsToday,
+            'total_orders' => $totalOrders,
+            'total_transactions' => $totalTransactions,
         ], 200);
     }
 
