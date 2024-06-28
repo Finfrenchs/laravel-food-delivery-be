@@ -35,6 +35,7 @@ Route::post('/order/purchase/{orderId}', [OrderController::class, 'purchaseOrder
 Route::get('/order/history', [OrderController::class, 'orderHistory'])->middleware('auth:sanctum');
 Route::get('/order/history/{orderId}', [OrderController::class, 'orderDetail'])->middleware('auth:sanctum');
 Route::post('/order/cancel/{orderId}', [OrderController::class, 'cancelOrder'])->middleware('auth:sanctum');
+Route::get('/payment-methods', [OrderController::class, 'getPaymentMethods'])->middleware('auth:sanctum');
 
 Route::get('/restaurant/orders', [OrderController::class, 'getOrdersByRestaurant'])->middleware('auth:sanctum');
 Route::post('/restaurant/order/{orderId}/prepare', [OrderController::class, 'prepareOrder'])->middleware('auth:sanctum');

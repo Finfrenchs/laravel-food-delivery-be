@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\Notification;
+use Xendit\Configuration;
 
 class OrderController extends Controller
 {
@@ -71,35 +73,246 @@ class OrderController extends Controller
 
 
     // User: Purchase order
+    public function __construct()
+    {
+        Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
+    }
+
+    ///One-Time Payment via Redirect URL
     public function purchaseOrder(Request $request, $orderId)
     {
         $validated = $request->validate([
             'payment_method' => 'required|in:bank_transfer,e_wallet',
             'payment_e_wallet' => 'nullable|required_if:payment_method,e_wallet|string',
+            'mobile_number' => 'nullable|required_if:payment_e_wallet,ID_OVO|string'
         ]);
 
         $order = Order::where('id', $orderId)->where('user_id', auth()->id())->first();
 
         if (!$order) {
-            return response()->json([
-                'message' => 'Order not found'
-            ], 404);
+            return response()->json(['message' => 'Order not found'], 404);
         }
 
-        $order->status = 'purchase';
-        $order->payment_method = $validated['payment_method'];
         if ($validated['payment_method'] === 'e_wallet') {
-            $order->payment_e_wallet = $validated['payment_e_wallet'];
-        }
-        $order->save();
+            $apiInstance = new \Xendit\PaymentRequest\PaymentRequestApi();
+            $idempotency_key = uniqid();
+            ///$for_user_id = auth()->id();
 
-        $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+            $channel_properties = [
+                'success_return_url' => 'http://10.1.10.179:8000'
+            ];
+
+            // Menambahkan mobile_number jika e-wallet adalah OVO
+            if ($validated['payment_e_wallet'] === 'ID_OVO') {
+                $channel_properties['mobile_number'] = $validated['mobile_number'];
+            }
+
+            $payment_request_parameters = new \Xendit\PaymentRequest\PaymentRequestParameters([
+                'reference_id' => 'order-' . $orderId,
+                'amount' => $order->total_bill,
+                'currency' => 'IDR',
+                'country' => 'ID',
+                'payment_method' => [
+                    'type' => 'EWALLET',
+                    'ewallet' => [
+                        'channel_code' => $validated['payment_e_wallet'],
+                        'channel_properties' => $channel_properties
+                    ],
+                    'reusability' => 'ONE_TIME_USE'
+                ]
+            ]);
+
+            try {
+                $result = $apiInstance->createPaymentRequest($idempotency_key, null, $payment_request_parameters);
+
+                Payment::create([
+                    'order_id' => $order->id,
+                    'payment_type' => $validated['payment_method'],
+                    'payment_provider' => $validated['payment_e_wallet'],
+                    'amount' => $order->total_bill,
+                    'status' => 'pending',
+                    'xendit_id' => $result['id'],
+                ]);
+
+                return response()->json(['message' => 'Payment created successfully', 'order' => $order, 'payment' => $result], 200);
+
+            } catch (\Xendit\XenditSdkException $e) {
+                return response()->json(['message' => 'Failed to create payment', 'error' => $e->getMessage(), 'full_error' => $e->getFullError()], 500);
+            }
+        } else {
+            $order->status = 'purchase';
+            $order->payment_method = $validated['payment_method'];
+            $order->save();
+
+            $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+
+            return response()->json(['message' => 'Order purchased successfully', 'order' => $order], 200);
+        }
+    }
+
+
+    /// Subsequent Tokenized E-Wallet Payments
+    public function purchaseOrderWithToken(Request $request, $orderId)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:bank_transfer,e_wallet',
+            'payment_e_wallet' => 'nullable|required_if:payment_method,e_wallet|string',
+            'payment_method_id' => 'nullable|required_if:payment_method,e_wallet|string',
+        ]);
+
+        $order = Order::where('id', $orderId)->where('user_id', auth()->id())->first();
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if ($validated['payment_method'] === 'e_wallet') {
+            $apiInstance = new \Xendit\PaymentRequest\PaymentRequestApi();
+            $idempotency_key = uniqid();
+            $for_user_id = auth()->id();
+
+            $payment_request_parameters = new \Xendit\PaymentRequest\PaymentRequestParameters([
+                'reference_id' => 'order-' . $orderId,
+                'amount' => $order->total_bill,
+                'currency' => 'IDR',
+                'payment_method_id' => $validated['payment_method_id'],
+                'metadata' => [
+                    'order_id' => $orderId,
+                    'user_id' => $order->user->id,
+                ]
+            ]);
+
+            try {
+                $result = $apiInstance->createPaymentRequest($idempotency_key, $for_user_id, $payment_request_parameters);
+
+                Payment::create([
+                    'order_id' => $order->id,
+                    'payment_type' => $validated['payment_method'],
+                    'payment_provider' => $validated['payment_e_wallet'],
+                    'amount' => $order->total_bill,
+                    'status' => 'pending',
+                    'xendit_id' => $result['id'],
+                ]);
+
+                return response()->json(['message' => 'Payment created successfully', 'order' => $order, 'payment' => $result], 200);
+
+            } catch (\Xendit\XenditSdkException $e) {
+                return response()->json(['message' => 'Failed to create payment', 'error' => $e->getMessage(), 'full_error' => $e->getFullError()], 500);
+            }
+        } else {
+            $order->status = 'purchase';
+            $order->payment_method = $validated['payment_method'];
+            $order->save();
+
+            $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+
+            return response()->json(['message' => 'Order purchased successfully', 'order' => $order], 200);
+        }
+    }
+
+    // Get Payment Method
+    public function getPaymentMethods()
+    {
+        $paymentMethods = [
+            'e_wallet' => [
+                'ID_OVO' => 'OVO',
+                'ID_DANA' => 'DANA',
+                'ID_LINKAJA' => 'LinkAja',
+                'ID_SHOPEEPAY' => 'ShopeePay',
+            ]
+        ];
 
         return response()->json([
-            'message' => 'Order purchased successfully',
-            'order' => $order,
+            'message' => 'Payment methods retrieved successfully',
+            'payment_methods' => $paymentMethods
         ], 200);
     }
+
+
+
+    // public function purchaseOrder(Request $request, $orderId)
+    // {
+    //     $validated = $request->validate([
+    //         'payment_method' => 'required|in:bank_transfer,e_wallet',
+    //         'payment_e_wallet' => 'nullable|required_if:payment_method,e_wallet|string',
+    //         'mobile_number' => 'nullable|required_if:payment_method,e_wallet|string',
+    //     ]);
+
+    //     $order = Order::where('id', $orderId)->where('user_id', auth()->id())->first();
+
+    //     if (!$order) {
+    //         return response()->json([
+    //             'message' => 'Order not found'
+    //         ], 404);
+    //     }
+
+    //     if ($validated['payment_method'] === 'e_wallet') {
+    //         $paymentParams = [
+    //             'reference_id' => 'order-' . $orderId,
+    //             'currency' => 'IDR',
+    //             'amount' => $order->total_bill,
+    //             'checkout_method' => 'ONE_TIME_PAYMENT',
+    //             'channel_code' => $validated['payment_e_wallet'],
+    //             'channel_properties' => [
+    //                 'mobile_number' => $validated['mobile_number'],
+    //             ],
+    //             'metadata' => [
+    //                 'order_id' => $orderId,
+    //                 'user_id' => $order->user->id,
+    //             ],
+    //         ];
+
+    //         try {
+    //             $payment = Xendit\PaymentRequest\EWallet::createEWalletCharge($paymentParams);
+
+    //             Payment::create([
+    //                 'order_id' => $order->id,
+    //                 'payment_type' => $validated['payment_method'],
+    //                 'payment_provider' => $validated['payment_e_wallet'],
+    //                 'amount' => $order->total_bill,
+    //                 'status' => 'pending',
+    //                 'xendit_id' => $payment['id'],
+    //             ]);
+
+    //             // Jika pembayaran berhasil, perbarui status order menjadi 'purchase'
+    //             $order->status = 'purchase';
+    //             $order->payment_method = $validated['payment_method'];
+    //             $order->payment_e_wallet = $validated['payment_e_wallet'];
+    //             $order->save();
+
+    //             $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+
+    //             return response()->json([
+    //                 'message' => 'Order purchased and payment created successfully',
+    //                 'order' => $order,
+    //                 'payment' => $payment,
+    //             ], 200);
+
+    //         } catch (\Exception $e) {
+    //             // Jika pembayaran gagal, ubah status order menjadi 'cancel'
+    //             $order->status = 'cancel';
+    //             $order->save();
+
+    //             return response()->json([
+    //                 'message' => 'Failed to create payment',
+    //                 'error' => $e->getMessage(),
+    //             ], 500);
+    //         }
+    //     } else {
+    //         // Jika metode pembayaran bukan e-wallet, langsung perbarui status order
+    //         $order->status = 'purchase';
+    //         $order->payment_method = $validated['payment_method'];
+    //         $order->save();
+
+    //         $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+
+    //         return response()->json([
+    //             'message' => 'Order purchased successfully',
+    //             'order' => $order,
+    //         ], 200);
+    //     }
+    // }
+
 
     // User: Order history list
     public function orderHistory()
