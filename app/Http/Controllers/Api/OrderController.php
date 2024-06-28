@@ -159,7 +159,10 @@ class OrderController extends Controller
     public function getOrdersByRestaurant()
     {
         $restaurantId = auth()->id();
-        $orders = Order::where('restaurant_id', $restaurantId)->orderBy('status')->get();
+        $orders = Order::where('restaurant_id', $restaurantId)
+        ->with('orderItems.product', 'user')
+        ->orderBy('status')
+        ->get();
 
         return response()->json([
             'message' => 'Orders retrieved successfully',

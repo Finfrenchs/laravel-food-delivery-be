@@ -173,7 +173,7 @@ class AuthController extends Controller
             'password' => 'required',
             'phone' => 'required',
             'license_plate' => 'required|string',
-            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg',
         ]);
 
         // Handle file upload using storeAs
@@ -322,7 +322,41 @@ class AuthController extends Controller
             'message' => 'User updated successfully',
             'user' => $user,
         ], 200);
-}
+    }
+
+    //update latlong user
+    public function updateLatlong(Request $request)
+    {
+        // Validasi request
+        $validated = $request->validate([
+            'latlong' => 'required|string',
+            'address' => 'sometimes|nullable|string',
+            'restaurant_address' => 'sometimes|nullable|string',
+        ]);
+
+
+        $user = $request->user();
+        $user->latlong = $validated['latlong'];
+
+        if (isset($validated['address'])) {
+            $user->address = $validated['address'];
+        }
+
+        if (isset($validated['restaurant_address'])) {
+            $user->restaurant_address = $validated['restaurant_address'];
+        }
+
+
+        $user->save();
+
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Latlong, address, and restaurant address updated successfully',
+            'data' => $user
+        ]);
+    }
+
 
 
     //Get All Restaurant
