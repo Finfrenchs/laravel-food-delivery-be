@@ -317,7 +317,7 @@ class OrderController extends Controller
     // User: Order history list
     public function orderHistory()
     {
-        $orders = Order::where('user_id', auth()->id())->get();
+        $orders = Order::where('user_id', auth()->id())->with('orderItems.product',  'user')->get();
 
         return response()->json([
             'message' => 'Order history retrieved successfully',
@@ -328,7 +328,7 @@ class OrderController extends Controller
     // User: Order history detail
     public function orderDetail($orderId)
     {
-        $order = Order::where('id', $orderId)->where('user_id', auth()->id())->with('orderItems.product')->first();
+        $order = Order::where('id', $orderId)->where('user_id', auth()->id())->with('orderItems.product', 'user')->first();
 
         if (!$order) {
             return response()->json([
@@ -500,7 +500,7 @@ class OrderController extends Controller
     // Driver: Get orders waiting for pickup
     public function getOrdersWaitingPickup()
     {
-        $orders = Order::where('status', 'waiting pickup')->get();
+        $orders = Order::where('status', 'waiting pickup')->with('orderItems.product',  'user')->get();
 
         return response()->json([
             'message' => 'Orders retrieved successfully',
