@@ -75,10 +75,12 @@ class OrderController extends Controller
     // User: Purchase order
     public function __construct()
     {
+        // Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
         Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
+
     }
 
-    ///One-Time Payment via Redirect URL
+    ///One-Time Payment via Redirect URL Xendit
     public function purchaseOrder(Request $request, $orderId)
     {
         $validated = $request->validate([
@@ -96,13 +98,14 @@ class OrderController extends Controller
         if ($validated['payment_method'] === 'e_wallet') {
             $apiInstance = new \Xendit\PaymentRequest\PaymentRequestApi();
             $idempotency_key = uniqid();
-            ///$for_user_id = auth()->id();
+            //$for_user_id = auth()->id();
 
             $channel_properties = [
-                'success_return_url' => 'http://10.1.10.179:8000'
+                'success_return_url' => 'flutter://payment_success?order_id=' . $orderId,
+                'failure_return_url' => 'flutter://payment_failed?order_id=' . $orderId,
             ];
 
-            // Menambahkan mobile_number jika e-wallet adalah OVO
+            // add mobile_number if e-wallet is OVO
             if ($validated['payment_e_wallet'] === 'ID_OVO') {
                 $channel_properties['mobile_number'] = $validated['mobile_number'];
             }
@@ -133,6 +136,9 @@ class OrderController extends Controller
                     'status' => 'pending',
                     'xendit_id' => $result['id'],
                 ]);
+                $order->payment_method = 'e_wallet';
+                $order->payment_e_wallet = $validated['payment_e_wallet'];
+                $order->save();
 
                 return response()->json(['message' => 'Payment created successfully', 'order' => $order, 'payment' => $result], 200);
 
@@ -140,6 +146,7 @@ class OrderController extends Controller
                 return response()->json(['message' => 'Failed to create payment', 'error' => $e->getMessage(), 'full_error' => $e->getFullError()], 500);
             }
         } else {
+            // Hanya memperbarui status order jika metode pembayaran bukan e-wallet
             $order->status = 'purchase';
             $order->payment_method = $validated['payment_method'];
             $order->save();
@@ -149,6 +156,70 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order purchased successfully', 'order' => $order], 200);
         }
     }
+
+    //Callback / webhook
+    public function webhook(Request $request)
+    {
+        Log::info('Received webhook:', $request->all());
+
+        $event = $request->input('event');
+        $data = $request->input('data');
+
+        if (isset($data['payment_request_id']) && isset($data['status'])) {
+            $payment = Payment::where('xendit_id', $data['payment_request_id'])->first();
+
+            if ($payment) {
+                $order = Order::where('id', $payment->order_id)->first();
+
+                if (!$order) {
+                    return response()->json(['message' => 'Order not found'], 404);
+                }
+
+                if ($event === 'payment.succeeded') {
+                    $order->status = 'purchase';
+                    $payment->status = 'success';
+                    $order->save();
+                    $payment->save();
+
+                    // send notification
+                    $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+
+                    return response()->json(['message' => 'Order updated successfully and notification sent'], 200);
+                } elseif ($event === 'payment.failed') {
+                    $order->status = 'cancel';
+                    $payment->status = 'failed';
+                    $order->save();
+                    $payment->save();
+
+                    return response()->json(['message' => 'Order updated to cancelled'], 200);
+                }
+
+                // if ($data['status'] === 'SUCCEEDED') {
+                //     $order->status = 'purchase';
+                //     $payment->status = 'success';
+                //     $order->save();
+                //     $payment->save();
+
+
+                //     $this->sendNotificationToRestaurant($order->restaurant_id, 'Order Purchased', 'An order has been purchased and is ready to be prepared.');
+
+                //     return response()->json(['message' => 'Order updated successfully and notification sent'], 200);
+                // } elseif ($data['status'] === 'FAILED') {
+                //     $order->status = 'cancel';
+                //     $payment->status = 'failed';
+                //     $order->save();
+                //     $payment->save();
+
+                //     return response()->json(['message' => 'Order updated to cancelled'], 200);
+                // }
+            } else {
+                return response()->json(['message' => 'Payment not found'], 404);
+            }
+        }
+
+        return response()->json(['message' => 'Invalid callback data'], 400);
+    }
+
 
 
     /// Subsequent Tokenized E-Wallet Payments
