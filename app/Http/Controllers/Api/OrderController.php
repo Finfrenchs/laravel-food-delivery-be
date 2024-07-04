@@ -75,8 +75,8 @@ class OrderController extends Controller
     // User: Purchase order
     public function __construct()
     {
-        // Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
-        Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
+        Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
+        //Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
 
     }
 
@@ -286,11 +286,16 @@ class OrderController extends Controller
     {
         $paymentMethods = [
             'e_wallet' => [
-                'ID_OVO' => 'OVO',
-                'ID_DANA' => 'DANA',
-                'ID_LINKAJA' => 'LinkAja',
-                'ID_SHOPEEPAY' => 'ShopeePay',
+            ['id' => 'ID_OVO', 'name' => 'OVO', 'code' => 110, 'method' => 'e_wallet'],
+            ['id' => 'ID_DANA', 'name' => 'DANA', 'code' => 111,'method' => 'e_wallet'],
+            ['id' => 'ID_LINKAJA', 'name' => 'LinkAja', 'code' => 112,'method' => 'e_wallet'],
+            ['id' => 'ID_SHOPEEPAY', 'name' => 'ShopeePay', 'code' => 113,'method' => 'e_wallet'],
             ]
+        //     ,
+        //     'bank_transfer' => [
+        //     ['id' => 'ID_BCA', 'name' => 'BCA', 'code' => 220,],
+        //     ['id' => 'ID_MANDIRI', 'name' => 'MANDIRI', 'code' => 221],
+        // ]
         ];
 
         return response()->json([
