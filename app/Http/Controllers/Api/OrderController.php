@@ -98,8 +98,8 @@ class OrderController extends Controller
     // User: Purchase order
     public function __construct()
     {
-        Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
-        //Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
+        //Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
+        Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
 
     }
 
@@ -599,7 +599,7 @@ class OrderController extends Controller
     // Driver: Get orders waiting for pickup
     public function getOrdersWaitingPickup()
     {
-        $orders = Order::where('status', 'waiting pickup')->with('orderItems.product',  'user')->get();
+        $orders = Order::where('status', 'waiting pickup')->with('orderItems.product',  'user', 'restaurant')->get();
 
         return response()->json([
             'message' => 'Orders retrieved successfully',
