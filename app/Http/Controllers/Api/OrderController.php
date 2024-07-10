@@ -70,6 +70,29 @@ class OrderController extends Controller
         ], 201);
     }
 
+    // Method to check the status of an order
+    public function checkOrderStatus($orderId)
+    {
+        $order = Order::where('id', $orderId)->where('user_id', auth()->id())->first();
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Order status retrieved successfully',
+            'order' => [
+                'id' => $order->id,
+                'status' => $order->status,
+                'total_price' => $order->total_price,
+                'shipping_cost' => $order->shipping_cost,
+                'total_bill' => $order->total_bill,
+                'created_at' => $order->created_at,
+                'updated_at' => $order->updated_at,
+            ]
+        ], 200);
+    }
+
 
 
     // User: Purchase order
@@ -404,7 +427,7 @@ class OrderController extends Controller
     // User: Order history detail
     public function orderDetail($orderId)
     {
-        $order = Order::where('id', $orderId)->where('user_id', auth()->id())->with('orderItems.product', 'user')->first();
+        $order = Order::where('id', $orderId)->where('user_id', auth()->id())->with('orderItems.product', 'user', 'driver', 'restaurant')->first();
 
         if (!$order) {
             return response()->json([
@@ -511,24 +534,24 @@ class OrderController extends Controller
         }
 
         // Cari pengemudi yang sedang tidak dalam status waiting pickup atau on delivery secara acak
-        $driver = DB::table('users')
-            ->where('roles', 'driver')
-            ->whereNotIn('id', function($query) {
-                $query->select('driver_id')
-                    ->from('orders')
-                    ->whereIn('status', ['waiting pickup', 'on delivery']);
-            })
-            ->inRandomOrder()
-            ->first();
+        // $driver = DB::table('users')
+        //     ->where('roles', 'driver')
+        //     ->whereNotIn('id', function($query) {
+        //         $query->select('driver_id')
+        //             ->from('orders')
+        //             ->whereIn('status', ['waiting pickup', 'on delivery']);
+        //     })
+        //     ->inRandomOrder()
+        //     ->first();
 
-        if (!$driver) {
-            return response()->json([
-                'message' => 'No available drivers found'
-            ], 400);
-        }
+        // if (!$driver) {
+        //     return response()->json([
+        //         'message' => 'No available drivers found'
+        //     ], 400);
+        // }
 
         $order->status = 'waiting pickup';
-        $order->driver_id = $driver->id;
+        //$order->driver_id = $driver->id;
         $order->save();
 
         $this->sendNotificationToUser($order->user_id, 'Order Ready for Pickup', 'Your order is ready for pickup.');
