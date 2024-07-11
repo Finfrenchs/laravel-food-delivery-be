@@ -64,6 +64,8 @@ class OrderController extends Controller
 
         $this->sendNotificationToRestaurant($order->restaurant_id, 'New Order', 'You have received a new order.');
 
+        $order->load('restaurant');
+
         return response()->json([
             'message' => 'Order created successfully',
             'order' => $order,
@@ -98,8 +100,8 @@ class OrderController extends Controller
     // User: Purchase order
     public function __construct()
     {
-        //Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
-        Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
+        Configuration::setXenditKey('xnd_development_2WdZYFWXIGBXjQ78cNNIxdzqJ3tiSQZyyjmNkOQvAXhtKl7UTIy533kYioq171');
+        //Configuration::setXenditKey('xnd_production_Df7zy1YOav5w5bcJXzJVHpNnbXU9x4r7FfCZfJN2p1PVOGriq4Qm968k723rOxtw');
 
     }
 
